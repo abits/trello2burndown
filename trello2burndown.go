@@ -28,6 +28,8 @@ func NewTrello() *Trello {
 	}
 	trello.Endpoints = map[string]string{
 		"getLists": "1/boards/%s/lists",
+		"getCards": "1/lists/%s/cards",
+		"getLabel": "1/labels/%s",
 	}
 	trello.Domain = "https://api.trello.com/"
 	trello.configFromFile("./config.json")
@@ -36,10 +38,11 @@ func NewTrello() *Trello {
 }
 
 type Card struct {
-	Id     string `json:"id"`
-	Name   string `json:"name"`
-	ListId string `json:"idList"`
-	Url    string `json:"url"`
+	Id     string  `json:"id"`
+	Name   string  `json:"name"`
+	ListId string  `json:"idList"`
+	Url    string  `json:"url"`
+	Labels []Label `json:"labels"`
 }
 
 type List struct {
@@ -47,22 +50,9 @@ type List struct {
 	Name string `json:"name"`
 }
 
-func findListNameById(lists []List, idList string) string {
-	for _, l := range lists {
-		if l.Id == idList {
-			return l.Name
-		}
-	}
-	return ""
-}
-
-func findListIdByName(lists []List, idName string) string {
-	for _, l := range lists {
-		if l.Name == idName {
-			return l.Id
-		}
-	}
-	return ""
+type Label struct {
+	Id   string `json:"id"`
+	Name string `json:"name"`
 }
 
 func (trello *Trello) configFromFile(filename string) {
@@ -104,6 +94,7 @@ func executeQuery(url *url.URL, params map[string]string) (response []byte) {
 	return
 }
 
+// Get Lists on trello board, needed for list ids as params in other queries.
 func (trello Trello) getLists() (listMap map[string]string) {
 	query := trello.buildQuery(fmt.Sprintf(trello.Endpoints["getLists"], trello.BoardId))
 	params := map[string]string{
@@ -120,9 +111,35 @@ func (trello Trello) getLists() (listMap map[string]string) {
 	return listMap
 }
 
+// Get Cards on a certain list
+func (trello Trello) getCards(listId string) (cardList []Card) {
+	query := trello.buildQuery(fmt.Sprintf(trello.Endpoints["getCards"], listId))
+	params := map[string]string{
+		"fields": "labels,id,name,idList",
+	}
+	content := executeQuery(query, params)
+	//fmt.Printf("%s", content)
+	cardList = make([]Card, 0)
+	json.Unmarshal(content, &cardList)
+	return cardList
+}
+
+// Get label information for a certain label id
+func (trello Trello) getLabel(labelId string) {
+	query := trello.buildQuery(fmt.Sprintf(trello.Endpoints["getLabel"], labelId))
+	params := map[string]string{
+		"fields": "name",
+	}
+	content := executeQuery(query, params)
+	cardList := make([]Card, 0)
+	json.Unmarshal(content, &cardList)
+}
+
 func main() {
 	trello := NewTrello()
 	lists := trello.getLists()
 	fmt.Printf("%v", lists[trello.ListTitles["open"]])
+	openCards := trello.getCards(lists[trello.ListTitles["open"]])
+	fmt.Printf("%v", openCards)
 	os.Exit(0)
 }
