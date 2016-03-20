@@ -2,8 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -11,15 +13,19 @@ import (
 )
 
 type Trello struct {
-	AppKey           string
-	ApiToken         string
-	BoardId          string
-	Domain           string
-	BeginOfSprint    time.Time
-	BeginOfSprintRaw string
-	ListTitles       map[string]string
-	Endpoints        map[string]string
-	Matrix           map[string]int
+	AppKey              string
+	ApiToken            string
+	BoardId             string
+	Domain              string
+	BeginOfSprint       time.Time
+	LengthOfSprint      int
+	BeginOfSprintString string `json:"BeginOfSprint"`
+	ListTitles          map[string]string
+	Endpoints           map[string]string
+	Matrix              map[string]int
+	DoneCards           []Card
+	DoingCards          []Card
+	OpenCards           []Card
 }
 
 func NewTrello() *Trello {
@@ -38,6 +44,12 @@ func NewTrello() *Trello {
 	}
 	trello.Domain = "https://api.trello.com/"
 	trello.configFromFile("./config.json")
+	beginOfSprint := fmt.Sprintf("%sT00:00:00Z", trello.BeginOfSprintString)
+	trello.BeginOfSprint, _ = time.Parse(time.RFC3339, beginOfSprint)
+	lists := trello.getLists()
+	trello.DoneCards = trello.getCards(lists[trello.ListTitles["done"]])
+	trello.OpenCards = trello.getCards(lists[trello.ListTitles["open"]])
+	trello.DoingCards = trello.getCards(lists[trello.ListTitles["doing"]])
 	return &trello
 }
 
@@ -141,20 +153,24 @@ func (trello Trello) getCards(listId string) (cardList []Card) {
 }
 
 // Get actions for a certain card
-func (trello Trello) getLatestDoneAction(card Card) (latestDoneAction Action) {
+func (trello Trello) getLatestDoneAction(card Card) (latestDoneAction Action, err error) {
 	query := trello.buildQuery(fmt.Sprintf(trello.Endpoints["getActions"], card.Id))
 	params := map[string]string{
 		"filter": "updateCard:idList",
 	}
 	content := executeQuery(query, params)
 	actionList := getActionList(content)
+	isDone := false
 	for _, action := range actionList {
 		if action.Data.ListAfter.Name == trello.ListTitles["done"] {
 			latestDoneAction = action
+			isDone = true
 			break
 		}
 	}
-
+	if isDone == false {
+		err = errors.New("Action is not yet done.")
+	}
 	return
 
 }
@@ -171,18 +187,28 @@ func (trello Trello) getLabel(labelId string) {
 }
 
 func (trello Trello) getDayOfWork(time time.Time) (dayOfWork int) {
-	deltaHours := trello.BeginOfSprint.Sub(time).Hours()
-	fmt.Printf("%v\n", deltaHours)
-	return int(deltaHours * 24)
+	deltaHours := math.Ceil((time.Sub(trello.BeginOfSprint).Hours()))
+	dayOfWork = int(deltaHours) / 24
+	if math.Mod(deltaHours, 24) > 0 {
+		dayOfWork = dayOfWork + 1
+	}
+	weeks := dayOfWork / 7
+	dayOfWork = dayOfWork - weeks*2
+	return
 }
 
-func evaluate(cardList []Card, matrix map[string]int) (storyPoints int) {
-	for _, card := range cardList {
-		for _, label := range card.Labels {
-			if val, ok := matrix[label.Name]; ok {
-				storyPoints = storyPoints + val
-			}
+func (card Card) evaluateCard(matrix map[string]int) (storyPoints int) {
+	for _, label := range card.Labels {
+		if val, ok := matrix[label.Name]; ok {
+			storyPoints = storyPoints + val
 		}
+	}
+	return storyPoints
+}
+
+func evaluateList(cardList []Card, matrix map[string]int) (storyPoints int) {
+	for _, card := range cardList {
+		storyPoints = storyPoints + card.evaluateCard(matrix)
 	}
 	return storyPoints
 }
@@ -199,21 +225,73 @@ func getActionList(content []byte) []Action {
 	return actionList
 }
 
+func (trello Trello) calculateStoryPoints() (totalStoryPoints int) {
+	totalStoryPoints = evaluateList(trello.DoneCards, trello.Matrix) +
+		evaluateList(trello.OpenCards, trello.Matrix) +
+		evaluateList(trello.DoingCards, trello.Matrix)
+	return
+}
+
+func (burndown Burndown) calcIdealSpeed() float64 {
+	return float64(burndown.totalStoryPoints) / float64(burndown.LengthOfSprint)
+}
+
+func (burndown Burndown) calcActualSpeed(trello *Trello) float64 {
+	donePoints := float64(evaluateList(trello.DoneCards, trello.Matrix))
+	actualSpeed := float64(donePoints) / float64(trello.getCurrentDayOfWork())
+	return actualSpeed
+}
+
+func (burndown Burndown) calcIdealRemaining() (idealRemaining []float64) {
+	lengthOfSprint := int(burndown.LengthOfSprint)
+	for day := 1; day <= lengthOfSprint; day++ {
+		idealRemaining = append(idealRemaining, (burndown.totalStoryPoints - float64(day)*burndown.idealSpeed))
+	}
+	return idealRemaining
+}
+
+func (burndown Burndown) calcActualRemaining(trello *Trello) (actualRemaining []int) {
+	for idx := 0; idx < trello.LengthOfSprint; idx++ {
+		actualRemaining = append(actualRemaining, int(burndown.totalStoryPoints))
+	}
+	for _, card := range trello.DoneCards {
+		storyPoints := card.evaluateCard(trello.Matrix)
+		doneAction, _ := trello.getLatestDoneAction(card)
+		dayOfWork := trello.getDayOfWork(doneAction.Time)
+		for idx := dayOfWork; idx < len(actualRemaining); idx++ {
+			actualRemaining[idx] -= storyPoints
+		}
+	}
+	return
+}
+
+func (trello Trello) getCurrentDayOfWork() int {
+	return trello.getDayOfWork(time.Now())
+}
+
+type Burndown struct {
+	LengthOfSprint   float64
+	totalStoryPoints float64
+	idealRemaining   []float64
+	actualRemaining  []int
+	idealSpeed       float64
+	actualSpeed      float64
+}
+
+func NewBurndown(trello *Trello) *Burndown {
+	var burndown Burndown
+	burndown.LengthOfSprint = float64(trello.LengthOfSprint)
+	burndown.totalStoryPoints = float64(trello.calculateStoryPoints())
+	burndown.idealSpeed = burndown.calcIdealSpeed()
+	burndown.actualSpeed = burndown.calcActualSpeed(trello)
+	burndown.idealRemaining = burndown.calcIdealRemaining()
+	burndown.actualRemaining = burndown.calcActualRemaining(trello)
+	return &burndown
+}
+
 func main() {
 	trello := NewTrello()
-	lists := trello.getLists()
-	//openCards := trello.getCards(lists[trello.ListTitles["open"]])
-	doneCards := trello.getCards(lists[trello.ListTitles["done"]])
-	//doingCards := trello.getCards(lists[trello.ListTitles["doing"]])
-	//storyPoints := evaluate(openCards, trello.Matrix)
-	//fmt.Printf("open: %v\n", storyPoints)
-	//storyPoints = evaluate(doneCards, trello.Matrix)
-	//fmt.Printf("done: %v\n", storyPoints)
-	//storyPoints = evaluate(doingCards, trello.Matrix)
-	//fmt.Printf("doing: %v\n", storyPoints)
-	latestDoneAction := trello.getLatestDoneAction(doneCards[0])
-	fmt.Printf("%v\n", latestDoneAction)
-	dayOfWorkOfLastAction := trello.getDayOfWork(latestDoneAction.Time)
-	fmt.Printf("%v", dayOfWorkOfLastAction)
+	burndown := NewBurndown(trello)
+	fmt.Printf("%v\n", burndown)
 	os.Exit(0)
 }
