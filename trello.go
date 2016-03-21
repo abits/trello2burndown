@@ -85,7 +85,7 @@ func (trello *Trello) initBoard() {
 	trello.DoingCards = trello.getCards(lists[trello.ListTitles["doing"]])
 }
 
-// Return url object for trello api domain.
+// buildQuery returns url object for trello api domain.
 func (trello Trello) buildQuery(endpoint string) (trelloApi *url.URL) {
 	trelloApi, _ = url.Parse(trello.Domain)
 	trelloApi.Path = endpoint
@@ -97,7 +97,7 @@ func (trello Trello) buildQuery(endpoint string) (trelloApi *url.URL) {
 	return
 }
 
-// Query endpoint and return response content.
+// executeQuery endpoint and return response content.
 func executeQuery(url *url.URL, params map[string]string) (response []byte) {
 	query := url.Query()
 	for key, value := range params {
@@ -115,7 +115,7 @@ func executeQuery(url *url.URL, params map[string]string) (response []byte) {
 	return
 }
 
-// Get Lists on trello board, needed for list ids as params in other queries.
+// getLists on trello board, needed for list ids as params in other queries.
 func (trello Trello) getLists() (listMap map[string]string) {
 	query := trello.buildQuery(fmt.Sprintf(trello.Endpoints["getLists"], trello.BoardId))
 	params := map[string]string{
@@ -133,7 +133,7 @@ func (trello Trello) getLists() (listMap map[string]string) {
 	return
 }
 
-// Get Cards on a certain list
+// getCards on a certain list
 func (trello Trello) getCards(listId string) (cardList []Card) {
 	query := trello.buildQuery(fmt.Sprintf(trello.Endpoints["getCards"], listId))
 	params := map[string]string{
@@ -146,7 +146,7 @@ func (trello Trello) getCards(listId string) (cardList []Card) {
 	return
 }
 
-// Get actions for a certain card
+// getLatestDoneAction for a certain card
 func (trello Trello) getLatestDoneAction(card Card) (latestDoneAction Action, err error) {
 	query := trello.buildQuery(fmt.Sprintf(trello.Endpoints["getActions"], card.Id))
 	params := map[string]string{
@@ -169,7 +169,7 @@ func (trello Trello) getLatestDoneAction(card Card) (latestDoneAction Action, er
 	return
 }
 
-// Get label information for a certain label id
+// getLabel information for a certain label id
 func (trello Trello) getLabel(labelId string) {
 	query := trello.buildQuery(fmt.Sprintf(trello.Endpoints["getLabel"], labelId))
 	params := map[string]string{
