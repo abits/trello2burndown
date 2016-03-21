@@ -6,6 +6,8 @@ import (
 	"os"
 )
 
+const CONFIG = "./config.json"
+
 func loadConfigurationFile(filename string) (file []byte) {
 	file, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -16,14 +18,10 @@ func loadConfigurationFile(filename string) (file []byte) {
 }
 
 func main() {
-	trello := NewTrello()
-	file := loadConfigurationFile("./config.json")
-	trello.configFromFile(file)
-	trello.initBoard()
-	burndown := NewBurndown(trello)
-	burndown.configFromFile(file)
-	burndown.initBurndown()
-	burndown.calcBurndown(trello)
+	config := loadConfigurationFile(CONFIG)
+	trello := NewTrello(config)
+	burndown := NewBurndown(config, trello)
+	burndown.calculate()
 	fmt.Printf("%v\n", burndown)
 	os.Exit(0)
 }

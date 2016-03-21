@@ -54,7 +54,7 @@ type Action struct {
 	Data       ActionData `json:"data"`
 }
 
-func NewTrello() *Trello {
+func NewTrello(file []byte) *Trello {
 	var trello Trello
 	trello.ListTitles = map[string]string{
 		"open":    "Offen",
@@ -69,7 +69,8 @@ func NewTrello() *Trello {
 		"getActions": "1/cards/%s/actions",
 	}
 	trello.Domain = "https://api.trello.com/"
-
+	trello.configFromFile(file)
+	trello.initBoard()
 	return &trello
 }
 
@@ -85,15 +86,15 @@ func (trello *Trello) initBoard() {
 }
 
 // Return url object for trello api domain.
-func (trello Trello) buildQuery(endpoint string) *url.URL {
-	var trelloApi, _ = url.Parse(trello.Domain)
+func (trello Trello) buildQuery(endpoint string) (trelloApi *url.URL) {
+	trelloApi, _ = url.Parse(trello.Domain)
 	trelloApi.Path = endpoint
 	var q = trelloApi.Query()
 	q.Add("key", trello.AppKey)
 	q.Add("token", trello.ApiToken)
 	trelloApi.RawQuery = q.Encode()
 
-	return trelloApi
+	return
 }
 
 // Query endpoint and return response content.
@@ -129,7 +130,7 @@ func (trello Trello) getLists() (listMap map[string]string) {
 		listMap[list.Name] = list.Id
 	}
 
-	return listMap
+	return
 }
 
 // Get Cards on a certain list
@@ -142,7 +143,7 @@ func (trello Trello) getCards(listId string) (cardList []Card) {
 	cardList = make([]Card, 0)
 	json.Unmarshal(content, &cardList)
 
-	return cardList
+	return
 }
 
 // Get actions for a certain card
@@ -179,8 +180,8 @@ func (trello Trello) getLabel(labelId string) {
 	json.Unmarshal(content, &cardList)
 }
 
-func getActionList(content []byte) []Action {
-	actionList := make([]Action, 0)
+func getActionList(content []byte) (actionList []Action) {
+	actionList = make([]Action, 0)
 	json.Unmarshal(content, &actionList)
 	for idx, action := range actionList {
 		actionTime, _ := time.Parse(
@@ -188,5 +189,5 @@ func getActionList(content []byte) []Action {
 			action.DateString)
 		actionList[idx].Time = actionTime
 	}
-	return actionList
+	return
 }
