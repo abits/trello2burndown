@@ -11,11 +11,11 @@ type Burndown struct {
 	LengthOfSprint      int
 	BeginOfSprint       time.Time
 	BeginOfSprintString string `json:"BeginOfSprint"`
-	totalStoryPoints    int
-	idealRemaining      []float64
-	actualRemaining     []int
-	idealSpeed          float64
-	actualSpeed         float64
+	TotalStoryPoints    int
+	IdealRemaining      []float64
+	ActualRemaining     []int
+	IdealSpeed          float64
+	ActualSpeed         float64
 	Matrix              map[string]int
 	trello              *Trello
 }
@@ -34,11 +34,11 @@ func (burndown *Burndown) configFromFile(file []byte) {
 }
 
 func (burndown *Burndown) calculate() {
-	burndown.totalStoryPoints = burndown.calculateTotalStoryPoints()
-	burndown.idealSpeed = burndown.calculateIdealSpeed()
-	burndown.actualSpeed = burndown.calculateActualSpeed()
-	burndown.idealRemaining = burndown.calculateIdealRemaining()
-	burndown.actualRemaining = burndown.calculateActualRemaining()
+	burndown.TotalStoryPoints = burndown.calculateTotalStoryPoints()
+	burndown.IdealSpeed = burndown.calculateIdealSpeed()
+	burndown.ActualSpeed = burndown.calculateActualSpeed()
+	burndown.IdealRemaining = burndown.calculateIdealRemaining()
+	burndown.ActualRemaining = burndown.calculateActualRemaining()
 }
 
 func (burndown Burndown) getDayOfWork(time time.Time) (dayOfWork int) {
@@ -58,7 +58,7 @@ func (burndown Burndown) getCurrentDayOfWork() int {
 }
 
 func (burndown Burndown) calculateIdealSpeed() float64 {
-	return float64(burndown.totalStoryPoints) / float64(burndown.LengthOfSprint)
+	return float64(burndown.TotalStoryPoints) / float64(burndown.LengthOfSprint)
 }
 
 func (burndown Burndown) calculateActualSpeed() (actualSpeed float64) {
@@ -70,14 +70,14 @@ func (burndown Burndown) calculateActualSpeed() (actualSpeed float64) {
 func (burndown Burndown) calculateIdealRemaining() (idealRemaining []float64) {
 	lengthOfSprint := int(burndown.LengthOfSprint)
 	for day := 1; day <= lengthOfSprint; day++ {
-		idealRemaining = append(idealRemaining, (float64(burndown.totalStoryPoints) - float64(day)*burndown.idealSpeed))
+		idealRemaining = append(idealRemaining, (float64(burndown.TotalStoryPoints) - float64(day)*burndown.IdealSpeed))
 	}
 	return
 }
 
 func (burndown Burndown) calculateActualRemaining() (actualRemaining []int) {
 	for idx := 0; idx < burndown.LengthOfSprint; idx++ {
-		actualRemaining = append(actualRemaining, int(burndown.totalStoryPoints))
+		actualRemaining = append(actualRemaining, int(burndown.TotalStoryPoints))
 	}
 	for _, card := range burndown.trello.DoneCards {
 		storyPoints := burndown.evaluateCard(card)
