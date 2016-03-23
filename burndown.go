@@ -29,6 +29,7 @@ func NewBurndown(file []byte, trello *Trello) *Burndown {
 }
 
 func (burndown *Burndown) setBeginOfSprint(beginOfSprintString string) {
+	burndown.BeginOfSprintString = beginOfSprintString
 	beginOfSprint := fmt.Sprintf("%sT00:00:00Z", beginOfSprintString)
 	burndown.BeginOfSprint, _ = time.Parse(time.RFC3339, beginOfSprint)
 }
@@ -42,19 +43,18 @@ func (burndown *Burndown) setParametersFromRequest(vars map[string]string) {
 	if boardId, ok := vars["boardId"]; ok {
 		burndown.trello.BoardId = boardId
 	}
-	if beginOfSprint, ok := vars["beginOfSprint"]; ok {
+	if beginOfSprint, ok := vars["begin"]; ok {
 		burndown.setBeginOfSprint(beginOfSprint)
 	}
-	if lengthOfSprint, ok := vars["lengthOfSprint"]; ok {
-		lengthOfSprintInt, err := strconv.Atoi(lengthOfSprint)
-		if err == nil {
-			burndown.LengthOfSprint = lengthOfSprintInt
-		}
+	if lengthOfSprint, ok := vars["length"]; ok {
+		lengthOfSprintInt, _ := strconv.Atoi(lengthOfSprint)
+		burndown.LengthOfSprint = lengthOfSprintInt
 	}
 }
 
 func (burndown *Burndown) calculate(vars map[string]string) {
 	burndown.setParametersFromRequest(vars)
+	burndown.TotalStoryPoints = burndown.calculateTotalStoryPoints()
 	burndown.IdealSpeed = burndown.calculateIdealSpeed()
 	burndown.ActualSpeed = burndown.calculateActualSpeed()
 	burndown.IdealRemaining = burndown.calculateIdealRemaining()
@@ -82,7 +82,7 @@ func (burndown Burndown) calculateIdealSpeed() float64 {
 }
 
 func (burndown Burndown) calculateActualSpeed() (actualSpeed float64) {
-	donePoints := float64(burndown.evaluateList(burndown.trello.DoneCards, burndown.Matrix))
+	donePoints := float64(burndown.evaluateList(burndown.trello.DoneCards))
 	actualSpeed = float64(donePoints) / float64(burndown.getCurrentDayOfWork())
 	return
 }
@@ -111,9 +111,10 @@ func (burndown Burndown) calculateActualRemaining() (actualRemaining []int) {
 }
 
 func (burndown Burndown) calculateTotalStoryPoints() (totalStoryPoints int) {
-	totalStoryPoints = burndown.evaluateList(burndown.trello.DoneCards, burndown.Matrix) +
-		burndown.evaluateList(burndown.trello.OpenCards, burndown.Matrix) +
-		burndown.evaluateList(burndown.trello.DoingCards, burndown.Matrix)
+	doneStoryPoints := burndown.evaluateList(burndown.trello.DoneCards)
+	openStoryPoints := burndown.evaluateList(burndown.trello.OpenCards)
+	doingStoryPoints := burndown.evaluateList(burndown.trello.DoingCards)
+	totalStoryPoints = doneStoryPoints + openStoryPoints + doingStoryPoints
 	return
 }
 
@@ -126,7 +127,7 @@ func (burndown Burndown) evaluateCard(card Card) (storyPoints int) {
 	return
 }
 
-func (burndown Burndown) evaluateList(cardList []Card, matrix map[string]int) (storyPoints int) {
+func (burndown Burndown) evaluateList(cardList []Card) (storyPoints int) {
 	for _, card := range cardList {
 		storyPoints = storyPoints + burndown.evaluateCard(card)
 	}
