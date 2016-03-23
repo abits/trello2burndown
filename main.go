@@ -27,9 +27,13 @@ func handleBurndown(res http.ResponseWriter, req *http.Request) {
 	trello := NewTrello(config)
 	burndown := NewBurndown(config, trello)
 	vars := mux.Vars(req)
-	beginOfSprint := req.FormValue("beginOfSprint")
+	beginOfSprint := req.FormValue("begin")
 	if beginOfSprint != "" {
-		vars["beginOfSprint"] = beginOfSprint
+		vars["begin"] = beginOfSprint
+	}
+	lengthOfSprint := req.FormValue("length")
+	if lengthOfSprint != "" {
+		vars["length"] = lengthOfSprint
 	}
 	burndown.calculate(vars)
 	res.Header().Set("Content-Type", "application/json")
