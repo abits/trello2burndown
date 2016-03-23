@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"strconv"
 	"time"
 )
 
@@ -27,14 +28,33 @@ func NewBurndown(file []byte, trello *Trello) *Burndown {
 	return &burndown
 }
 
-func (burndown *Burndown) configFromFile(file []byte) {
-	json.Unmarshal(file, &burndown)
-	beginOfSprint := fmt.Sprintf("%sT00:00:00Z", burndown.BeginOfSprintString)
+func (burndown *Burndown) setBeginOfSprint(beginOfSprintString string) {
+	beginOfSprint := fmt.Sprintf("%sT00:00:00Z", beginOfSprintString)
 	burndown.BeginOfSprint, _ = time.Parse(time.RFC3339, beginOfSprint)
 }
 
-func (burndown *Burndown) calculate() {
-	burndown.TotalStoryPoints = burndown.calculateTotalStoryPoints()
+func (burndown *Burndown) configFromFile(file []byte) {
+	json.Unmarshal(file, &burndown)
+	burndown.setBeginOfSprint(burndown.BeginOfSprintString)
+}
+
+func (burndown *Burndown) setParametersFromRequest(vars map[string]string) {
+	if boardId, ok := vars["boardId"]; ok {
+		burndown.trello.BoardId = boardId
+	}
+	if beginOfSprint, ok := vars["beginOfSprint"]; ok {
+		burndown.setBeginOfSprint(beginOfSprint)
+	}
+	if lengthOfSprint, ok := vars["lengthOfSprint"]; ok {
+		lengthOfSprintInt, err := strconv.Atoi(lengthOfSprint)
+		if err == nil {
+			burndown.LengthOfSprint = lengthOfSprintInt
+		}
+	}
+}
+
+func (burndown *Burndown) calculate(vars map[string]string) {
+	burndown.setParametersFromRequest(vars)
 	burndown.IdealSpeed = burndown.calculateIdealSpeed()
 	burndown.ActualSpeed = burndown.calculateActualSpeed()
 	burndown.IdealRemaining = burndown.calculateIdealRemaining()

@@ -26,7 +26,12 @@ func handleBurndown(res http.ResponseWriter, req *http.Request) {
 	config := loadConfigurationFile(CONFIG)
 	trello := NewTrello(config)
 	burndown := NewBurndown(config, trello)
-	burndown.calculate()
+	vars := mux.Vars(req)
+	beginOfSprint := req.FormValue("beginOfSprint")
+	if beginOfSprint != "" {
+		vars["beginOfSprint"] = beginOfSprint
+	}
+	burndown.calculate(vars)
 	res.Header().Set("Content-Type", "application/json")
 	res.Header().Set("Access-Control-Allow-Origin", "*")
 
@@ -41,6 +46,6 @@ func handleBurndown(res http.ResponseWriter, req *http.Request) {
 
 func main() {
 	router := mux.NewRouter()
-	router.HandleFunc("/burndown", handleBurndown).Methods("GET")
+	router.HandleFunc("/burndown/{boardId}", handleBurndown).Methods("GET")
 	http.ListenAndServe(":8080", router)
 }
