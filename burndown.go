@@ -42,6 +42,7 @@ func (burndown *Burndown) configFromFile(file []byte) {
 func (burndown *Burndown) setParametersFromRequest(vars map[string]string) {
 	if boardId, ok := vars["boardId"]; ok {
 		burndown.trello.BoardId = boardId
+		fmt.Printf("burndown.trello.BoardId: %v\n", burndown.trello.BoardId)
 	}
 	if beginOfSprint, ok := vars["begin"]; ok {
 		burndown.setBeginOfSprint(beginOfSprint)
@@ -114,6 +115,9 @@ func (burndown Burndown) calculateTotalStoryPoints() (totalStoryPoints int) {
 	doneStoryPoints := burndown.evaluateList(burndown.trello.DoneCards)
 	openStoryPoints := burndown.evaluateList(burndown.trello.OpenCards)
 	doingStoryPoints := burndown.evaluateList(burndown.trello.DoingCards)
+	fmt.Printf("doneStoryPoints: %v\n", doneStoryPoints)
+	fmt.Printf("openStoryPoints: %v\n", openStoryPoints)
+	fmt.Printf("doingStoryPoints: %v\n", doingStoryPoints)
 	totalStoryPoints = doneStoryPoints + openStoryPoints + doingStoryPoints
 	return
 }

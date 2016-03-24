@@ -54,7 +54,7 @@ type Action struct {
 	Data       ActionData `json:"data"`
 }
 
-func NewTrello(file []byte) *Trello {
+func NewTrello(file []byte, vars map[string]string) *Trello {
 	var trello Trello
 	trello.ListTitles = map[string]string{
 		"open":    "Offen",
@@ -70,7 +70,7 @@ func NewTrello(file []byte) *Trello {
 	}
 	trello.Domain = "https://api.trello.com/"
 	trello.configFromFile(file)
-	trello.initBoard()
+	trello.initBoard(vars["boardId"])
 	return &trello
 }
 
@@ -78,8 +78,8 @@ func (trello *Trello) configFromFile(file []byte) {
 	json.Unmarshal(file, &trello)
 }
 
-func (trello *Trello) initBoard() {
-	lists := trello.getLists()
+func (trello *Trello) initBoard(boardId string) {
+	lists := trello.getLists(boardId)
 	trello.DoneCards = trello.getCards(lists[trello.ListTitles["done"]])
 	trello.OpenCards = trello.getCards(lists[trello.ListTitles["open"]])
 	trello.DoingCards = trello.getCards(lists[trello.ListTitles["doing"]])
@@ -116,8 +116,8 @@ func executeQuery(url *url.URL, params map[string]string) (response []byte) {
 }
 
 // getLists on trello board, needed for list ids as params in other queries.
-func (trello Trello) getLists() (listMap map[string]string) {
-	query := trello.buildQuery(fmt.Sprintf(trello.Endpoints["getLists"], trello.BoardId))
+func (trello Trello) getLists(boardId string) (listMap map[string]string) {
+	query := trello.buildQuery(fmt.Sprintf(trello.Endpoints["getLists"], boardId))
 	params := map[string]string{
 		"fields": "name,idList,url,labels",
 	}

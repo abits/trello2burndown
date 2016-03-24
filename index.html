@@ -121,15 +121,8 @@
      height: 400,
      width: 600
    }
-   new Chartist.Line('.ct-chart', data, options);
+   new Chartist.Line('.ct-chart', mockup, options);
  };
- $.ajax({
-  method: "GET",
-  url: "http://localhost:8080/burndown"
-}).done(function( data ) {
-  $(".spinner").hide();
-  generateChartFromData(data);
-});
 </script>
 </body>
 </html>

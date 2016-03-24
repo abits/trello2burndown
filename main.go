@@ -24,9 +24,9 @@ func loadConfigurationFile(filename string) (file []byte) {
 
 func handleBurndown(res http.ResponseWriter, req *http.Request) {
 	config := loadConfigurationFile(CONFIG)
-	trello := NewTrello(config)
-	burndown := NewBurndown(config, trello)
 	vars := mux.Vars(req)
+	trello := NewTrello(config, vars)
+	burndown := NewBurndown(config, trello)
 	beginOfSprint := req.FormValue("begin")
 	if beginOfSprint != "" {
 		vars["begin"] = beginOfSprint
