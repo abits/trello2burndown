@@ -20,7 +20,7 @@ type Burndown struct {
 	trello              *Trello
 }
 
-func NewBurndown(vars []byte, trello *Trello) *Burndown {
+func NewBurndown(trello *Trello, vars []byte) *Burndown {
 	var burndown Burndown
 	burndown.trello = trello
 	burndown.configFrom(vars)

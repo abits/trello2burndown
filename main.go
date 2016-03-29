@@ -29,11 +29,11 @@ func handleBurndown(res http.ResponseWriter, req *http.Request) {
 
 	config := loadConfigurationFile(CONFIG)
 	trello := NewTrello(config, vars)
-	burndown := NewBurndown(vars, trello)
+	burndown := NewBurndown(trello, vars)
 	burndown.calculate()
+
 	res.Header().Set("Content-Type", "application/json")
 	res.Header().Set("Access-Control-Allow-Origin", "*")
-
 	data, error := json.Marshal(burndown)
 	if error != nil {
 		log.Println(error.Error())
