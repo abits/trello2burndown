@@ -9,22 +9,22 @@ import (
 )
 
 type Burndown struct {
-	LengthOfSprint      int
+	LengthOfSprint      int `json:"length"`
 	BeginOfSprint       time.Time
-	BeginOfSprintString string `json:"BeginOfSprint"`
+	BeginOfSprintString string `json:"begin"`
 	TotalStoryPoints    int
 	IdealRemaining      []float64
 	ActualRemaining     []int
 	IdealSpeed          float64
 	ActualSpeed         float64
-	Metric              map[string]int
+	Metric              map[string]int `json:"metric"`
 	trello              *Trello
 }
 
-func NewBurndown(file []byte, trello *Trello) *Burndown {
+func NewBurndown(vars []byte, trello *Trello) *Burndown {
 	var burndown Burndown
 	burndown.trello = trello
-	burndown.configFromFile(file)
+	burndown.configFrom(vars)
 	return &burndown
 }
 
@@ -34,8 +34,8 @@ func (burndown *Burndown) setBeginOfSprint(beginOfSprintString string) {
 	burndown.BeginOfSprint, _ = time.Parse(time.RFC3339, beginOfSprint)
 }
 
-func (burndown *Burndown) configFromFile(file []byte) {
-	json.Unmarshal(file, &burndown)
+func (burndown *Burndown) configFrom(data []byte) {
+	json.Unmarshal(data, &burndown)
 	burndown.setBeginOfSprint(burndown.BeginOfSprintString)
 }
 
@@ -53,8 +53,7 @@ func (burndown *Burndown) setParametersFromRequest(vars map[string]string) {
 	}
 }
 
-func (burndown *Burndown) calculate(vars map[string]string) {
-	burndown.setParametersFromRequest(vars)
+func (burndown *Burndown) calculate() {
 	burndown.TotalStoryPoints = burndown.calculateTotalStoryPoints()
 	burndown.IdealSpeed = burndown.calculateIdealSpeed()
 	burndown.ActualSpeed = burndown.calculateActualSpeed()

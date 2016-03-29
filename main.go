@@ -3,12 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/gorilla/mux"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
-
-	"github.com/gorilla/mux"
 )
 
 const CONFIG = "./config.json"
@@ -23,19 +22,15 @@ func loadConfigurationFile(filename string) (file []byte) {
 }
 
 func handleBurndown(res http.ResponseWriter, req *http.Request) {
+	vars, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		panic("Cannot parse JSON from request body.")
+	}
+
 	config := loadConfigurationFile(CONFIG)
-	vars := mux.Vars(req)
 	trello := NewTrello(config, vars)
-	burndown := NewBurndown(config, trello)
-	beginOfSprint := req.FormValue("begin")
-	if beginOfSprint != "" {
-		vars["begin"] = beginOfSprint
-	}
-	lengthOfSprint := req.FormValue("length")
-	if lengthOfSprint != "" {
-		vars["length"] = lengthOfSprint
-	}
-	burndown.calculate(vars)
+	burndown := NewBurndown(vars, trello)
+	burndown.calculate()
 	res.Header().Set("Content-Type", "application/json")
 	res.Header().Set("Access-Control-Allow-Origin", "*")
 
@@ -50,6 +45,7 @@ func handleBurndown(res http.ResponseWriter, req *http.Request) {
 
 func main() {
 	router := mux.NewRouter()
-	router.HandleFunc("/burndown/{boardId}", handleBurndown).Methods("GET")
+	router.Handle("/", http.FileServer(http.Dir("static"))).Methods("GET")
+	router.HandleFunc("/burndown", handleBurndown).Methods("POST")
 	http.ListenAndServe(":8080", router)
 }

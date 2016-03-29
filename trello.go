@@ -14,7 +14,7 @@ import (
 type Trello struct {
 	AppKey     string
 	ApiToken   string
-	BoardId    string
+	BoardId    string `json:"boardId"`
 	Domain     string
 	ListTitles map[string]string
 	Endpoints  map[string]string
@@ -54,7 +54,7 @@ type Action struct {
 	Data       ActionData `json:"data"`
 }
 
-func NewTrello(file []byte, vars map[string]string) *Trello {
+func NewTrello(file []byte, vars []byte) *Trello {
 	var trello Trello
 	trello.ListTitles = map[string]string{
 		"open":    "Offen",
@@ -69,17 +69,18 @@ func NewTrello(file []byte, vars map[string]string) *Trello {
 		"getActions": "1/cards/%s/actions",
 	}
 	trello.Domain = "https://api.trello.com/"
-	trello.configFromFile(file)
-	trello.initBoard(vars["boardId"])
+	trello.configureFrom(file)
+	trello.configureFrom(vars)
+	trello.initBoard()
 	return &trello
 }
 
-func (trello *Trello) configFromFile(file []byte) {
-	json.Unmarshal(file, &trello)
+func (trello *Trello) configureFrom(data []byte) {
+	json.Unmarshal(data, &trello)
 }
 
-func (trello *Trello) initBoard(boardId string) {
-	lists := trello.getLists(boardId)
+func (trello *Trello) initBoard() {
+	lists := trello.getLists(trello.BoardId)
 	trello.DoneCards = trello.getCards(lists[trello.ListTitles["done"]])
 	trello.OpenCards = trello.getCards(lists[trello.ListTitles["open"]])
 	trello.DoingCards = trello.getCards(lists[trello.ListTitles["doing"]])
