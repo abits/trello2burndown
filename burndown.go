@@ -81,7 +81,7 @@ func (burndown Burndown) calculateIdealRemaining() (idealRemaining []float64) {
 }
 
 func (burndown Burndown) calculateActualRemaining() (actualRemaining []int) {
-	for idx := 0; idx < burndown.LengthOfSprint; idx++ {
+	for idx := 0; idx < burndown.getCurrentDayOfWork(); idx++ {
 		actualRemaining = append(actualRemaining, int(burndown.TotalStoryPoints))
 	}
 	for _, card := range burndown.trello.DoneCards {
