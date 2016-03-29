@@ -3,23 +3,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/mux"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
+
+	"github.com/gorilla/mux"
 )
-
-const CONFIG = "./config.json"
-
-func loadConfigurationFile(filename string) (file []byte) {
-	file, err := ioutil.ReadFile(filename)
-	if err != nil {
-		fmt.Printf("Cannot read from config file: %v\n", err)
-		os.Exit(1)
-	}
-	return
-}
 
 func handleBurndown(res http.ResponseWriter, req *http.Request) {
 	vars, err := ioutil.ReadAll(req.Body)
@@ -27,8 +16,7 @@ func handleBurndown(res http.ResponseWriter, req *http.Request) {
 		panic("Cannot parse JSON from request body.")
 	}
 
-	config := loadConfigurationFile(CONFIG)
-	trello := NewTrello(config, vars)
+	trello := NewTrello(vars)
 	burndown := NewBurndown(trello, vars)
 	burndown.calculate()
 

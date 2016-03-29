@@ -11,13 +11,29 @@ import (
 	"time"
 )
 
+const CONFIG = "./config.json"
+
+func loadConfigurationFile(filename string) (file []byte) {
+	file, err := ioutil.ReadFile(filename)
+	if err != nil {
+		fmt.Printf("Cannot read from config file: %v\n", err)
+		os.Exit(1)
+	}
+	return
+}
+
 type Trello struct {
-	AppKey     string
-	ApiToken   string
+	AppKey    string
+	ApiToken  string
+	Domain    string
+	Endpoints map[string]string
+	board     *Board
+}
+
+type Board struct {
 	BoardId    string `json:"boardId"`
-	Domain     string
+	BoardName  string
 	ListTitles map[string]string
-	Endpoints  map[string]string
 	DoneCards  []Card
 	DoingCards []Card
 	OpenCards  []Card
@@ -54,36 +70,48 @@ type Action struct {
 	Data       ActionData `json:"data"`
 }
 
-func NewTrello(file []byte, vars []byte) *Trello {
+func NewTrello(vars []byte) *Trello {
 	var trello Trello
-	trello.ListTitles = map[string]string{
-		"open":    "Offen",
-		"doing":   "In Arbeit",
-		"done":    "Erledigt",
-		"backlog": "Backlog",
-	}
+	trello.Domain = "https://api.trello.com/"
 	trello.Endpoints = map[string]string{
 		"getLists":   "1/boards/%s/lists",
 		"getCards":   "1/lists/%s/cards",
 		"getLabel":   "1/labels/%s",
 		"getActions": "1/cards/%s/actions",
+		"getBoard":   "1/boards/%s",
 	}
-	trello.Domain = "https://api.trello.com/"
+	file := loadConfigurationFile(CONFIG)
 	trello.configureFrom(file)
-	trello.configureFrom(vars)
-	trello.initBoard()
+	trello.board = NewBoard(vars)
+	trello.initBoard(trello.board)
 	return &trello
+}
+
+func NewBoard(vars []byte) *Board {
+	var board Board
+	board.ListTitles = map[string]string{
+		"open":    "Offen",
+		"doing":   "In Arbeit",
+		"done":    "Erledigt",
+		"backlog": "Backlog",
+	}
+	board.configureFrom(vars)
+	return &board
 }
 
 func (trello *Trello) configureFrom(data []byte) {
 	json.Unmarshal(data, &trello)
 }
 
-func (trello *Trello) initBoard() {
-	lists := trello.getLists(trello.BoardId)
-	trello.DoneCards = trello.getCards(lists[trello.ListTitles["done"]])
-	trello.OpenCards = trello.getCards(lists[trello.ListTitles["open"]])
-	trello.DoingCards = trello.getCards(lists[trello.ListTitles["doing"]])
+func (board *Board) configureFrom(data []byte) {
+	json.Unmarshal(data, &board)
+}
+
+func (trello *Trello) initBoard(board *Board) {
+	lists := trello.getLists(board.BoardId)
+	board.DoneCards = trello.getCards(lists[board.ListTitles["done"]])
+	board.OpenCards = trello.getCards(lists[board.ListTitles["open"]])
+	board.DoingCards = trello.getCards(lists[board.ListTitles["doing"]])
 }
 
 // buildQuery returns url object for trello api domain.
@@ -157,7 +185,7 @@ func (trello Trello) getLatestDoneAction(card Card) (latestDoneAction Action, er
 	actionList := getActionList(content)
 	isDone := false
 	for _, action := range actionList {
-		if action.Data.ListAfter.Name == trello.ListTitles["done"] {
+		if action.Data.ListAfter.Name == trello.board.ListTitles["done"] {
 			latestDoneAction = action
 			isDone = true
 			break

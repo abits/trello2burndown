@@ -67,7 +67,7 @@ func (burndown Burndown) calculateIdealSpeed() float64 {
 }
 
 func (burndown Burndown) calculateActualSpeed() (actualSpeed float64) {
-	donePoints := float64(burndown.evaluateList(burndown.trello.DoneCards))
+	donePoints := float64(burndown.evaluateList(burndown.trello.board.DoneCards))
 	actualSpeed = float64(donePoints) / float64(burndown.getCurrentDayOfWork())
 	return
 }
@@ -84,7 +84,7 @@ func (burndown Burndown) calculateActualRemaining() (actualRemaining []int) {
 	for idx := 0; idx < burndown.getCurrentDayOfWork(); idx++ {
 		actualRemaining = append(actualRemaining, int(burndown.TotalStoryPoints))
 	}
-	for _, card := range burndown.trello.DoneCards {
+	for _, card := range burndown.trello.board.DoneCards {
 		storyPoints := burndown.evaluateCard(card)
 		doneAction, _ := burndown.trello.getLatestDoneAction(card)
 		dayOfWork := burndown.getDayOfWork(doneAction.Time)
@@ -96,9 +96,9 @@ func (burndown Burndown) calculateActualRemaining() (actualRemaining []int) {
 }
 
 func (burndown Burndown) calculateTotalStoryPoints() (totalStoryPoints int) {
-	doneStoryPoints := burndown.evaluateList(burndown.trello.DoneCards)
-	openStoryPoints := burndown.evaluateList(burndown.trello.OpenCards)
-	doingStoryPoints := burndown.evaluateList(burndown.trello.DoingCards)
+	doneStoryPoints := burndown.evaluateList(burndown.trello.board.DoneCards)
+	openStoryPoints := burndown.evaluateList(burndown.trello.board.OpenCards)
+	doingStoryPoints := burndown.evaluateList(burndown.trello.board.DoingCards)
 	totalStoryPoints = doneStoryPoints + openStoryPoints + doingStoryPoints
 	return
 }
