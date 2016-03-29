@@ -76,53 +76,46 @@
   </div>
 </div>
   <script>
-    var mockup = { "LengthOfSprint": 10,
-    "BeginOfSprint": "2016-03-05",
-    "TotalStoryPoints": 43,
-    "IdealRemaining": [ 38.7,
-    34.4,
-    30.1,
-    25.8,
-    21.5,
-    17.200000000000003,
-    12.900000000000002,
-    8.600000000000001,
-    4.300000000000004,
-    0 ],
-    "ActualRemaining": [ 43,
-    43,
-    43,
-    43,
-    42,
-    39,
-    39,
-    39,
-    37,
-    30 ],
-    "IdealSpeed": 4.3,
-    "ActualSpeed": 1.5,
-    "Matrix": { "leicht": 1,
-    "mittel": 3,
-    "schwer": 8 }
-  };
-
-  generateChartFromData = function(source) {
-    var idealRemainingPadded =
-    source.IdealRemaining.unshift(source.TotalStoryPoints)
-    var ActualRemainingPadded =
-    source.ActualRemaining.unshift(source.TotalStoryPoints)
-    var data = {
-      series: [
-      source.IdealRemaining,
-      source.ActualRemaining
-      ]
+    var params = {
+    "boardId": "ZZpK3xr8",
+    "length": 10,
+    "begin": "2016-03-21",
+    "metric": {
+        "leicht": 1,
+        "mittel": 3,
+        "schwer": 8 
+        }
     };
-    var options = {
-     height: 400,
-     width: 600
-   }
-   new Chartist.Line('.ct-chart', mockup, options);
- };
+    var printError = function( req, status, err ) {
+      console.log( 'Error calling API', status, err );
+    };
+    generateChartFromData = function(source) {
+        var idealRemainingPadded =
+            source.IdealRemaining.unshift(source.TotalStoryPoints)
+        var ActualRemainingPadded =
+            source.ActualRemaining.unshift(source.TotalStoryPoints)
+        var data = {
+            series: [
+                source.IdealRemaining,
+                source.ActualRemaining
+            ]
+        };
+        var options = {
+            height: 400,
+            width: 600,
+            lineSmooth: false
+        }
+        new Chartist.Line('.ct-chart', data, options);
+        $('.spinner').hide();
+    };
+    $.ajax({
+        method: "POST",
+        data: JSON.stringify(params),
+        dataType: "json",
+        url: "http://127.0.0.1:8080/burndown",
+        success: generateChartFromData,
+        error: printError
+    });
 </script>
 </body>
 </html>
