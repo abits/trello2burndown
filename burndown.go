@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"strconv"
 	"time"
 )
 
@@ -37,20 +36,6 @@ func (burndown *Burndown) setBeginOfSprint(beginOfSprintString string) {
 func (burndown *Burndown) configFrom(data []byte) {
 	json.Unmarshal(data, &burndown)
 	burndown.setBeginOfSprint(burndown.BeginOfSprintString)
-}
-
-func (burndown *Burndown) setParametersFromRequest(vars map[string]string) {
-	if boardId, ok := vars["boardId"]; ok {
-		burndown.trello.BoardId = boardId
-		fmt.Printf("burndown.trello.BoardId: %v\n", burndown.trello.BoardId)
-	}
-	if beginOfSprint, ok := vars["begin"]; ok {
-		burndown.setBeginOfSprint(beginOfSprint)
-	}
-	if lengthOfSprint, ok := vars["length"]; ok {
-		lengthOfSprintInt, _ := strconv.Atoi(lengthOfSprint)
-		burndown.LengthOfSprint = lengthOfSprintInt
-	}
 }
 
 func (burndown *Burndown) calculate() {
@@ -114,9 +99,6 @@ func (burndown Burndown) calculateTotalStoryPoints() (totalStoryPoints int) {
 	doneStoryPoints := burndown.evaluateList(burndown.trello.DoneCards)
 	openStoryPoints := burndown.evaluateList(burndown.trello.OpenCards)
 	doingStoryPoints := burndown.evaluateList(burndown.trello.DoingCards)
-	fmt.Printf("doneStoryPoints: %v\n", doneStoryPoints)
-	fmt.Printf("openStoryPoints: %v\n", openStoryPoints)
-	fmt.Printf("doingStoryPoints: %v\n", doingStoryPoints)
 	totalStoryPoints = doneStoryPoints + openStoryPoints + doingStoryPoints
 	return
 }
