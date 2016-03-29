@@ -17,7 +17,7 @@ type Burndown struct {
 	ActualRemaining     []int
 	IdealSpeed          float64
 	ActualSpeed         float64
-	Matrix              map[string]int
+	Metric              map[string]int
 	trello              *Trello
 }
 
@@ -124,7 +124,7 @@ func (burndown Burndown) calculateTotalStoryPoints() (totalStoryPoints int) {
 
 func (burndown Burndown) evaluateCard(card Card) (storyPoints int) {
 	for _, label := range card.Labels {
-		if val, ok := burndown.Matrix[label.Name]; ok {
+		if val, ok := burndown.Metric[label.Name]; ok {
 			storyPoints = storyPoints + val
 		}
 	}
