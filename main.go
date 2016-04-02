@@ -33,7 +33,9 @@ func handleBurndown(res http.ResponseWriter, req *http.Request) {
 
 func main() {
 	router := mux.NewRouter()
-	router.Handle("/", http.FileServer(http.Dir("static"))).Methods("GET")
+	staticHandler := http.StripPrefix("/static/", http.FileServer(http.Dir("./static/")))
+	router.PathPrefix("/static/").Handler(staticHandler).Methods("GET")
+	http.Handle("/", router)
 	router.HandleFunc("/burndown", handleBurndown).Methods("POST")
 	http.ListenAndServe(":8080", router)
 }
