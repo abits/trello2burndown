@@ -109,9 +109,28 @@ func (board *Board) configureFrom(data []byte) {
 
 func (trello *Trello) initBoard(board *Board) {
 	lists := trello.getLists(board.BoardId)
-	board.DoneCards = trello.getCards(lists[board.ListTitles["done"]])
-	board.OpenCards = trello.getCards(lists[board.ListTitles["open"]])
-	board.DoingCards = trello.getCards(lists[board.ListTitles["doing"]])
+	trello.initCardsAsync(lists, board)
+}
+
+func (trello *Trello) initCardsAsync(lists map[string]string, board *Board) {
+	done := make(chan []Card)
+	open := make(chan []Card)
+	doing := make(chan []Card)
+	go func(lists map[string]string, board *Board) {
+		cards := trello.getCards(lists[board.ListTitles["done"]])
+		done <- cards
+	}(lists, board)
+	go func(lists map[string]string, board *Board) {
+		cards := trello.getCards(lists[board.ListTitles["open"]])
+		open <- cards
+	}(lists, board)
+	go func(lists map[string]string, board *Board) {
+		cards := trello.getCards(lists[board.ListTitles["doing"]])
+		doing <- cards
+	}(lists, board)
+	board.OpenCards = <-open
+	board.DoneCards = <-done
+	board.DoingCards = <-doing
 }
 
 // buildQuery returns url object for trello api domain.
@@ -151,7 +170,6 @@ func (trello Trello) getLists(boardId string) (listMap map[string]string) {
 		"fields": "name,idList,url,labels",
 	}
 	content := executeQuery(query, params)
-
 	lists := make([]List, 0)
 	json.Unmarshal(content, &lists)
 	listMap = make(map[string]string, 0)

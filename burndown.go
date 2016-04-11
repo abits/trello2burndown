@@ -20,6 +20,11 @@ type Burndown struct {
 	trello              *Trello
 }
 
+type ValuedDoneAction struct {
+	storyPoints int
+	doneAction  *Action
+}
+
 func NewBurndown(trello *Trello, vars []byte) *Burndown {
 	var burndown Burndown
 	burndown.trello = trello
@@ -43,7 +48,8 @@ func (burndown *Burndown) calculate() {
 	burndown.IdealSpeed = burndown.calculateIdealSpeed()
 	burndown.ActualSpeed = burndown.calculateActualSpeed()
 	burndown.IdealRemaining = burndown.calculateIdealRemaining()
-	burndown.ActualRemaining = burndown.calculateActualRemaining()
+	//burndown.ActualRemaining = burndown.calculateActualRemaining()
+	burndown.ActualRemaining = burndown.calculateActualRemainingAsync()
 }
 
 func (burndown Burndown) getDayOfWork(time time.Time) (dayOfWork int) {
@@ -92,6 +98,36 @@ func (burndown Burndown) calculateActualRemaining() (actualRemaining []int) {
 			actualRemaining[idx] -= storyPoints
 		}
 	}
+	return
+}
+
+func (burndown Burndown) calculateActualRemainingAsync() (actualRemaining []int) {
+	for idx := 0; idx < burndown.getCurrentDayOfWork(); idx++ {
+		actualRemaining = append(actualRemaining, int(burndown.TotalStoryPoints))
+	}
+	ch := make(chan *ValuedDoneAction, len(burndown.trello.board.DoneCards))
+	for _, card := range burndown.trello.board.DoneCards {
+		storyPoints := burndown.evaluateCard(card)
+		go func(card Card) {
+			doneAction, _ := burndown.trello.getLatestDoneAction(card)
+			ch <- &ValuedDoneAction{storyPoints, &doneAction}
+		}(card)
+	}
+	counter := 0
+	for {
+		select {
+		case r := <-ch:
+			dayOfWork := burndown.getDayOfWork(r.doneAction.Time)
+			for idx := dayOfWork; idx < len(actualRemaining); idx++ {
+				actualRemaining[idx] -= r.storyPoints
+			}
+			counter++
+			if counter >= len(burndown.trello.board.DoneCards) {
+				return
+			}
+		}
+	}
+
 	return
 }
 
