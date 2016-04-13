@@ -46,10 +46,9 @@ func (burndown *Burndown) configFrom(data []byte) {
 func (burndown *Burndown) calculate() {
 	burndown.TotalStoryPoints = burndown.calculateTotalStoryPoints()
 	burndown.IdealSpeed = burndown.calculateIdealSpeed()
-	burndown.ActualSpeed = burndown.calculateActualSpeed()
 	burndown.IdealRemaining = burndown.calculateIdealRemaining()
-	//burndown.ActualRemaining = burndown.calculateActualRemaining()
 	burndown.ActualRemaining = burndown.calculateActualRemainingAsync()
+	burndown.ActualSpeed = burndown.calculateActualSpeed()
 }
 
 func (burndown Burndown) getDayOfWork(time time.Time) (dayOfWork int) {
@@ -65,7 +64,11 @@ func (burndown Burndown) getDayOfWork(time time.Time) (dayOfWork int) {
 }
 
 func (burndown Burndown) getCurrentDayOfWork() int {
-	return burndown.getDayOfWork(time.Now())
+	currentDayOfWork := burndown.getDayOfWork(time.Now())
+	if currentDayOfWork > burndown.LengthOfSprint {
+		currentDayOfWork = burndown.LengthOfSprint
+	}
+	return currentDayOfWork
 }
 
 func (burndown Burndown) calculateIdealSpeed() float64 {
@@ -73,8 +76,9 @@ func (burndown Burndown) calculateIdealSpeed() float64 {
 }
 
 func (burndown Burndown) calculateActualSpeed() (actualSpeed float64) {
+	currentDayOfWork := burndown.getCurrentDayOfWork()
 	donePoints := float64(burndown.evaluateList(burndown.trello.board.DoneCards))
-	actualSpeed = float64(donePoints) / float64(burndown.getCurrentDayOfWork())
+	actualSpeed = float64(donePoints) / float64(currentDayOfWork)
 	return
 }
 
@@ -102,7 +106,8 @@ func (burndown Burndown) calculateActualRemaining() (actualRemaining []int) {
 }
 
 func (burndown Burndown) calculateActualRemainingAsync() (actualRemaining []int) {
-	for idx := 0; idx < burndown.getCurrentDayOfWork(); idx++ {
+	currentDayOfWork := burndown.getCurrentDayOfWork()
+	for idx := 0; idx < currentDayOfWork; idx++ {
 		actualRemaining = append(actualRemaining, int(burndown.TotalStoryPoints))
 	}
 	ch := make(chan *ValuedDoneAction, len(burndown.trello.board.DoneCards))
@@ -123,12 +128,12 @@ func (burndown Burndown) calculateActualRemainingAsync() (actualRemaining []int)
 			}
 			counter++
 			if counter >= len(burndown.trello.board.DoneCards) {
-				return
+				return actualRemaining[:currentDayOfWork]
 			}
 		}
 	}
 
-	return
+	return actualRemaining[:currentDayOfWork]
 }
 
 func (burndown Burndown) calculateTotalStoryPoints() (totalStoryPoints int) {
