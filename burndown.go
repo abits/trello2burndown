@@ -17,6 +17,7 @@ type Burndown struct {
 	IdealSpeed          float64
 	ActualSpeed         float64
 	Metric              map[string]int `json:"metric"`
+	ChartData           [][]float64    `json:"rows"`
 	trello              *Trello
 }
 
@@ -30,6 +31,19 @@ func NewBurndown(trello *Trello, vars []byte) *Burndown {
 	burndown.trello = trello
 	burndown.configFrom(vars)
 	return &burndown
+}
+
+func (burndown *Burndown) formatChartData() {
+	row := []float64{0.0, float64(burndown.TotalStoryPoints), float64(burndown.TotalStoryPoints)}
+	burndown.ChartData = append(burndown.ChartData, row)
+	for idx, idealRemaining := range burndown.IdealRemaining {
+		dayOfSprint := float64(idx + 1)
+		row = []float64{dayOfSprint, idealRemaining}
+		if idx < len(burndown.ActualRemaining) {
+			row = append(row, float64(burndown.ActualRemaining[idx]))
+		}
+		burndown.ChartData = append(burndown.ChartData, row)
+	}
 }
 
 func (burndown *Burndown) setBeginOfSprint(beginOfSprintString string) {
@@ -49,6 +63,7 @@ func (burndown *Burndown) calculate() {
 	burndown.IdealRemaining = burndown.calculateIdealRemaining()
 	burndown.ActualRemaining = burndown.calculateActualRemainingAsync()
 	burndown.ActualSpeed = burndown.calculateActualSpeed()
+	burndown.formatChartData()
 }
 
 func (burndown Burndown) getDayOfWork(time time.Time) (dayOfWork int) {
@@ -85,7 +100,7 @@ func (burndown Burndown) calculateActualSpeed() (actualSpeed float64) {
 func (burndown Burndown) calculateIdealRemaining() (idealRemaining []float64) {
 	lengthOfSprint := int(burndown.LengthOfSprint)
 	for day := 1; day <= lengthOfSprint; day++ {
-		idealRemaining = append(idealRemaining, (float64(burndown.TotalStoryPoints) - float64(day)*burndown.IdealSpeed))
+		idealRemaining = append(idealRemaining, rounder((float64(burndown.TotalStoryPoints)-float64(day)*burndown.IdealSpeed), 1))
 	}
 	return
 }
@@ -158,4 +173,13 @@ func (burndown Burndown) evaluateList(cardList []Card) (storyPoints int) {
 		storyPoints = storyPoints + burndown.evaluateCard(card)
 	}
 	return
+}
+
+func round(f float64) float64 {
+	return math.Floor(f + .5)
+}
+
+func rounder(f float64, places int) float64 {
+	shift := math.Pow(10, float64(places))
+	return round(f*shift) / shift
 }
