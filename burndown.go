@@ -59,10 +59,15 @@ func (burndown *Burndown) configFrom(data []byte) {
 
 func (burndown *Burndown) calculate() {
 	burndown.TotalStoryPoints = burndown.calculateTotalStoryPoints()
+	fmt.Println(burndown)
 	burndown.IdealSpeed = burndown.calculateIdealSpeed()
+	fmt.Println(burndown)
 	burndown.IdealRemaining = burndown.calculateIdealRemaining()
-	burndown.ActualRemaining = burndown.calculateActualRemainingAsync()
+	fmt.Println(burndown)
+	burndown.ActualRemaining = burndown.calculateActualRemaining()
+	fmt.Println(burndown)
 	burndown.ActualSpeed = burndown.calculateActualSpeed()
+	fmt.Println(burndown)
 	burndown.formatChartData()
 }
 
